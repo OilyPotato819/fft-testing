@@ -49,8 +49,9 @@ navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream)
    cnv.width = window.innerWidth - 20;
    cnv.height = window.innerHeight - 25;
 
-   const circle = { x: cnv.width / 2, y: cnv.height / 2, r: 0.5 };
+   const circle = { x: cnv.width / 2, y: cnv.height / 2, r: 100, spiky: 0.2 };
    let angle = 0;
+   let start = {};
 
    function draw() {
       analyser.getByteFrequencyData(dataArray);
@@ -67,22 +68,27 @@ navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream)
       ctx.beginPath();
 
       for (let i = 0; i <= bufferLength; i++) {
-         dist = cnv.height / 2 - dataArray[i] * 0.5;
+         dist = circle.r + dataArray[i] * circle.spiky;
 
-         if (i == bufferLength) dist = cnv.height / 2 - dataArray[0] * 0.5;
+         let x = circle.x + dist * Math.sin(angle);
+         let y = circle.y + dist * Math.cos(angle);
 
-         const x = circle.x + dist * Math.sin(angle) * 0.5;
-         const y = circle.y + dist * Math.cos(angle) * 0.5;
+         if (i == bufferLength) {
+            x = start.x;
+            y = start.y;
+            angle -= (2 * Math.PI) / bufferLength;
+         }
 
          if (i == 1) {
             ctx.moveTo(x, y);
+            start.x = x;
+            start.y = y;
          } else {
             ctx.lineTo(x, y);
          }
 
          angle += (2 * Math.PI) / bufferLength;
       }
-      angle = 0;
 
       ctx.stroke();
 
