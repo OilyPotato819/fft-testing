@@ -45,7 +45,7 @@ function drawCircle(data) {
   const circle = { x: cnv.width / 2, y: cnv.height / 2, r: 5, spikyness: 10 };
   let angle = 0;
   let start = {};
-  const pieceNum = 10;
+  const pieceNum = 12;
   const remove = 500;
 
   let grd = ctx.createRadialGradient(circle.x, circle.y, 400, circle.x, circle.y, circle.r + 50);
