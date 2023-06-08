@@ -37,23 +37,28 @@ document.body.appendChild(renderer.domElement);
 // const particlesMaterial = new THREE.PointsMaterial({ size: 0.02, vertexColors: true });
 // const particles = new THREE.Points(sphere, particlesMaterial);
 
-const icosahedron = new THREE.IcosahedronGeometry(1, 10);
-const material = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
-const icosahedronMesh = new THREE.Mesh(icosahedron, material);
+const radius = 5;
+const icosahedron = new THREE.IcosahedronGeometry(radius, 20);
+const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
+const icoMesh = new THREE.Mesh(icosahedron, icoMaterial);
 const position = icosahedron.getAttribute('position');
 
 const colorArray = new Float32Array(position.count * 3);
 for (let i = 0; i < colorArray.length; i += 3) {
-  const color = hslToRgb((position.array[i] + 1) / 2, 0.5, 0.5);
+  const color = hslToRgb((position.array[i] + radius) / (2 * radius), 0.5, 0.5);
   colorArray[i] = color[0] / 255;
   colorArray[i + 1] = color[1] / 255;
   colorArray[i + 2] = color[2] / 255;
 }
-const color = icosahedron.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+icosahedron.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
-scene.add(icosahedronMesh);
+const pointsMaterial = new THREE.PointsMaterial({ size: 0.05, vertexColors: true });
+const points = new THREE.Points(icosahedron, pointsMaterial);
 
-camera.position.z = 3;
+scene.add(points);
+// scene.add(icoMesh);
+
+camera.position.z = 10;
 
 function fibonacciSphere(numPoints, point) {
   const rnd = 1;
@@ -107,14 +112,18 @@ function movePoint(i, dist, vertices) {
   vertices[index + 2] = newPoint.z;
 }
 
-for (let i = 0; i < 10 * 3; i++) {
-  movePoint(i, 0.2, position.array);
-}
+// for (let i = 0; i < 10 * 3; i++) {
+//   movePoint(i, 0.2, position.array);
+// }
 
 function animate() {
-  icosahedronMesh.rotation.x += 0.005;
-  icosahedronMesh.rotation.y += 0.005;
-  icosahedronMesh.rotation.z += 0.005;
+  icoMesh.rotation.x += 0.005;
+  icoMesh.rotation.y += 0.005;
+  icoMesh.rotation.z += 0.005;
+
+  points.rotation.x += 0.005;
+  points.rotation.y += 0.005;
+  points.rotation.z += 0.005;
 
   //   positionAttribute.setXYZ(index + 1, x, y, z);
   //   positionAttribute.setXYZ(index + 2, x, y, z);
