@@ -38,25 +38,69 @@ document.body.appendChild(renderer.domElement);
 // const particles = new THREE.Points(sphere, particlesMaterial);
 
 const radius = 5;
-const icosahedron = new THREE.IcosahedronGeometry(radius, 20);
+const icosphere = new THREE.IcosahedronGeometry(radius, 0);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
-const icoMesh = new THREE.Mesh(icosahedron, icoMaterial);
-const position = icosahedron.getAttribute('position');
+const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
+const position = icosphere.getAttribute('position');
 
 const colorArray = new Float32Array(position.count * 3);
 for (let i = 0; i < colorArray.length; i += 3) {
-  const color = hslToRgb((position.array[i] + radius) / (2 * radius), 0.5, 0.5);
+  const color = hslToRgb(((position.array[i] + radius) * 0.15) / (2 * radius) + 0.5, 0.5, 0.5);
   colorArray[i] = color[0] / 255;
   colorArray[i + 1] = color[1] / 255;
   colorArray[i + 2] = color[2] / 255;
 }
-icosahedron.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+icosphere.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
 const pointsMaterial = new THREE.PointsMaterial({ size: 0.05, vertexColors: true });
-const points = new THREE.Points(icosahedron, pointsMaterial);
+const points = new THREE.Points(icosphere, pointsMaterial);
 
-scene.add(points);
+// scene.add(points);
 // scene.add(icoMesh);
+
+const indexed = new THREE.BufferGeometry();
+const geometry = new THREE.BoxGeometry(2, 2, 2);
+
+const vertices = new Float32Array([
+  -1.0,
+  -1.0,
+  1.0, // v0
+  1.0,
+  -1.0,
+  1.0, // v1
+  1.0,
+  1.0,
+  1.0, // v2
+  -1.0,
+  1.0,
+  1.0, // v3
+  -1.0,
+  -1.0,
+  -1.0, // v4
+  1.0,
+  -1.0,
+  -1.0, // v5
+  1.0,
+  1.0,
+  -1.0, // v6
+  -1.0,
+  1.0,
+  -1.0, // v7
+]);
+
+const indices = [0, 1, 2, 0, 2, 3, 6, 5, 4, 7, 6, 4, 0, 3, 4, 3, 7, 4, 1, 5, 2, 2, 5, 6];
+
+indexed.setIndex(indices);
+indexed.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+const indexedMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: false });
+const indexedMesh = new THREE.Mesh(indexed, indexedMaterial);
+
+const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: false });
+const mesh = new THREE.Mesh(geometry, material);
+
+// scene.add(indexedMesh);
+scene.add(mesh);
 
 camera.position.z = 10;
 
@@ -112,18 +156,26 @@ function movePoint(i, dist, vertices) {
   vertices[index + 2] = newPoint.z;
 }
 
-// for (let i = 0; i < 10 * 3; i++) {
-//   movePoint(i, 0.2, position.array);
+// for (let i = 0; i < 1 * 6; i++) {
+//   movePoint(i, 1, position.array);
 // }
+// icosphere.verticesNeedUpdate = true;
+
+movePoint(2, 1, indexed.getAttribute('position').array);
+movePoint(3, 1, indexed.getAttribute('position').array);
+
+movePoint(16, 1, geometry.getAttribute('position').array);
+movePoint(17, 1, geometry.getAttribute('position').array);
 
 function animate() {
-  icoMesh.rotation.x += 0.005;
+  // icoMesh.rotation.x += 0.005;
   icoMesh.rotation.y += 0.005;
   icoMesh.rotation.z += 0.005;
 
-  points.rotation.x += 0.005;
-  points.rotation.y += 0.005;
-  points.rotation.z += 0.005;
+  mesh.rotation.y -= 0.005;
+
+  indexedMesh.rotation.y -= 0.005;
+  // indexedMesh.rotation.z += 0.005;
 
   //   positionAttribute.setXYZ(index + 1, x, y, z);
   //   positionAttribute.setXYZ(index + 2, x, y, z);
