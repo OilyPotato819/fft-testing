@@ -7,62 +7,53 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth - 20, window.innerHeight - 20);
 document.body.appendChild(renderer.domElement);
 
-const sphere = new THREE.BufferGeometry();
-const numPoints = 1000;
+// const sphere = new THREE.BufferGeometry();
+// const numPoints = 100;
 
-let vertices = new Float32Array(numPoints * 3);
-let colors = new Float32Array(numPoints * 3);
-for (let i = 0; i < numPoints; i++) {
-  const pos = fibonacciSphere(numPoints, i);
-  vertices[i * 3] = pos.x;
-  vertices[i * 3 + 1] = pos.y;
-  vertices[i * 3 + 2] = pos.z;
+// let vertices = new Float32Array(numPoints * 3);
+// let colors = new Float32Array(numPoints * 3);
+// for (let i = 0; i < numPoints; i++) {
+//   const pos = fibonacciSphere(numPoints, i);
+//   vertices[i * 3] = pos.x;
+//   vertices[i * 3 + 1] = pos.y;
+//   vertices[i * 3 + 2] = pos.z;
 
-  console.log((i / numPoints + 0.5) % 1, i / numPoints);
-  const color = hslToRgb((i / numPoints + 0.5) % 1, 0.5, 0.5);
-  colors[i * 3] = color[0] / 255;
-  colors[i * 3 + 1] = color[1] / 255;
-  colors[i * 3 + 2] = color[2] / 255;
+//   if (i % 3 === 0) {
+//     randNum = Math.random();
+//   }
+//   const color = hslToRgb(randNum, 0.5, 0.5);
+//   console.log(color);
+//   colors[i * 3] = color[0] / 255;
+//   colors[i * 3 + 1] = color[1] / 255;
+//   colors[i * 3 + 2] = color[2] / 255;
+// }
+
+// sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+// sphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+// const position = sphere.getAttribute('position');
+// const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+// const mesh = new THREE.Mesh(sphere, material);
+
+// const particlesMaterial = new THREE.PointsMaterial({ size: 0.02, vertexColors: true });
+// const particles = new THREE.Points(sphere, particlesMaterial);
+
+const icosahedron = new THREE.IcosahedronGeometry(1, 10);
+const material = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
+const icosahedronMesh = new THREE.Mesh(icosahedron, material);
+const position = icosahedron.getAttribute('position');
+
+const colorArray = new Float32Array(position.count * 3);
+for (let i = 0; i < colorArray.length; i += 3) {
+  const color = hslToRgb((position.array[i] + 1) / 2, 0.5, 0.5);
+  colorArray[i] = color[0] / 255;
+  colorArray[i + 1] = color[1] / 255;
+  colorArray[i + 2] = color[2] / 255;
 }
+const color = icosahedron.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
-sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-sphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-const position = sphere.getAttribute('position');
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-const mesh = new THREE.Mesh(sphere, material);
+scene.add(icosahedronMesh);
 
-const particlesMaterial = new THREE.PointsMaterial({ size: 0.02, vertexColors: true });
-const particles = new THREE.Points(sphere, particlesMaterial);
-
-scene.add(particles);
-
-camera.position.z = 5;
-
-function createSphere(radius, latitudeBands, longitudeBands) {
-  let vertices = [];
-
-  for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
-    let theta = (latNumber * Math.PI) / latitudeBands;
-    let sinTheta = Math.sin(theta);
-    let cosTheta = Math.cos(theta);
-
-    for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
-      let phi = (longNumber * 2 * Math.PI) / longitudeBands;
-      let sinPhi = Math.sin(phi);
-      let cosPhi = Math.cos(phi);
-
-      let x = cosPhi * sinTheta;
-      let y = cosTheta;
-      let z = sinPhi * sinTheta;
-
-      vertices.push(radius * x);
-      vertices.push(radius * y);
-      vertices.push(radius * z);
-    }
-  }
-
-  return new Float32Array(vertices);
-}
+camera.position.z = 3;
 
 function fibonacciSphere(numPoints, point) {
   const rnd = 1;
@@ -105,7 +96,7 @@ function hslToRgb(h, s, l) {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
-function movePoint(i, dist) {
+function movePoint(i, dist, vertices) {
   const index = i * 3;
   const point = new THREE.Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
   const direction = point.clone().normalize();
@@ -116,10 +107,14 @@ function movePoint(i, dist) {
   vertices[index + 2] = newPoint.z;
 }
 
+for (let i = 0; i < 10 * 3; i++) {
+  movePoint(i, 0.2, position.array);
+}
+
 function animate() {
-  // particles.rotation.x += 0.01;
-  // particles.rotation.y += 0.01;
-  // particles.rotation.z += 0.005;
+  icosahedronMesh.rotation.x += 0.005;
+  icosahedronMesh.rotation.y += 0.005;
+  icosahedronMesh.rotation.z += 0.005;
 
   //   positionAttribute.setXYZ(index + 1, x, y, z);
   //   positionAttribute.setXYZ(index + 2, x, y, z);
