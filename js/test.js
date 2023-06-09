@@ -7,8 +7,11 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth - 20, window.innerHeight - 20);
 document.body.appendChild(renderer.domElement);
 
-const detail = 10;
+const frequency = 0.08;
+const detail = 0;
 const radius = 5;
+const colorMax = 0.8;
+const colorMin = 0.5;
 const icosphere = new THREE.IcosahedronGeometry(radius, detail);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
 const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
@@ -29,19 +32,25 @@ for (let i = 0; i < posAttribute.array.length; i += 3) {
   indices[i / 3] = index;
 }
 
+for (let i = 0; i < vertexNum; i++) {
+  movePoint(i, Math.random() * 2 * Math.sin(frequency), vertices);
+}
+
 icosphere.setIndex(indices);
 icosphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
 posAttribute = icosphere.getAttribute('position');
 
-const colorArray = new Float32Array(posAttribute.count * 3);
-for (let i = 0; i < colorArray.length; i += 3) {
-  const color = hslToRgb(((posAttribute.array[i] + radius) * 0.15) / (2 * radius) + 0.5, 0.5, 0.5);
-  colorArray[i] = color[0] / 255;
-  colorArray[i + 1] = color[1] / 255;
-  colorArray[i + 2] = color[2] / 255;
+let hueArray = [];
+for (let i = 0; i < vertexNum * 3; i += 3) {
+  const hue = ((posAttribute.array[i] + radius) * colorMax) / (2 * radius) + colorMin;
+  hueArray.push(hue);
 }
-icosphere.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+icosphere.setAttribute('color', new THREE.BufferAttribute(new Float32Array(posAttribute.count * 3), 3));
+const colorAttribute = icosphere.getAttribute('color');
+
+setColors();
 
 const pointsMaterial = new THREE.PointsMaterial({ size: 0.05, vertexColors: true });
 const points = new THREE.Points(icosphere, pointsMaterial);
@@ -89,7 +98,7 @@ function hslToRgb(h, s, l) {
     b = hue2rgb(p, q, h - 1 / 3);
   }
 
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  return [r, g, b];
 }
 
 function movePoint(i, dist, vertices) {
@@ -103,21 +112,39 @@ function movePoint(i, dist, vertices) {
   vertices[index + 2] = newPoint.z;
 }
 
+function setColors() {
+  for (let i = 0; i < vertexNum; i++) {
+    const P = 0;
+    const hue = ((colorMin - colorMax) / P) * (P - Math.abs());
+    // y=\frac{H-L}{P}\left(P-\left|\operatorname{mod}\left(x,2P\right)-P\right|\right)+L
+    const color = hslToRgb(hueArray[i], 0.5, 0.5);
+    colorAttribute.array.set(color, i * 3);
+  }
+  colorAttribute.needsUpdate = true;
+}
+
 // for (let i = 0; i < 1 * 6; i++) {
 //   movePoint(i, 1, posAttribute.array);
 // }
 // icosphere.verticesNeedUpdate = true;
 
+let frameCount = 1;
 function animate() {
-  // icoMesh.rotation.y -= 0.005;
-  // icoMesh.rotation.z -= 0.005;
-  icoMesh.rotation.x += 0.005;
+  frameCount++;
+  icoMesh.rotation.y -= 0.005;
+  icoMesh.rotation.z -= 0.005;
+  //icoMesh.rotation.x += 0.005;
 
   //   posAttribute.setXYZ(index + 1, x, y, z);
   //   posAttribute.setXYZ(index + 2, x, y, z);
 
-  for (let i = 0; i < posAttribute.count; i++) {
-    movePoint(i, Math.random() / 100, posAttribute.array);
+  for (let i = 0; i < vertexNum; i++) {
+    const dist =
+      new THREE.Vector3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]).distanceTo(new THREE.Vector3()) -
+      radius;
+    const amplitude = dist / Math.sin(frequency * frameCount);
+    const good = Math.abs(amplitude * Math.sin(frequency * (frameCount + 1)));
+    movePoint(i, good - dist, posAttribute.array);
   }
   posAttribute.needsUpdate = true;
 
