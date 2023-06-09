@@ -12,7 +12,7 @@ const radius = 5;
 const icosphere = new THREE.IcosahedronGeometry(radius, detail);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
 const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
-const posAttribute = icosphere.getAttribute('position');
+let posAttribute = icosphere.getAttribute('position');
 
 const vertexNum = icosphere.getAttribute('normal').count / 6 + 2;
 let map = new Map();
@@ -32,7 +32,7 @@ for (let i = 0; i < posAttribute.array.length; i += 3) {
 icosphere.setIndex(indices);
 icosphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
-const position = icosphere.getAttribute('position');
+posAttribute = icosphere.getAttribute('position');
 
 const colorArray = new Float32Array(posAttribute.count * 3);
 for (let i = 0; i < colorArray.length; i += 3) {
@@ -116,10 +116,10 @@ function animate() {
   //   posAttribute.setXYZ(index + 1, x, y, z);
   //   posAttribute.setXYZ(index + 2, x, y, z);
 
-  for (let i = 0; i < position.count; i++) {
-    movePoint(i, Math.random() / 100, position.array);
+  for (let i = 0; i < posAttribute.count; i++) {
+    movePoint(i, Math.random() / 100, posAttribute.array);
   }
-  position.needsUpdate = true;
+  posAttribute.needsUpdate = true;
 
   requestAnimationFrame(animate);
 
