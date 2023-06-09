@@ -7,45 +7,36 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth - 20, window.innerHeight - 20);
 document.body.appendChild(renderer.domElement);
 
-// const sphere = new THREE.BufferGeometry();
-// const numPoints = 100;
-
-// let vertices = new Float32Array(numPoints * 3);
-// let colors = new Float32Array(numPoints * 3);
-// for (let i = 0; i < numPoints; i++) {
-//   const pos = fibonacciSphere(numPoints, i);
-//   vertices[i * 3] = pos.x;
-//   vertices[i * 3 + 1] = pos.y;
-//   vertices[i * 3 + 2] = pos.z;
-
-//   if (i % 3 === 0) {
-//     randNum = Math.random();
-//   }
-//   const color = hslToRgb(randNum, 0.5, 0.5);
-//   console.log(color);
-//   colors[i * 3] = color[0] / 255;
-//   colors[i * 3 + 1] = color[1] / 255;
-//   colors[i * 3 + 2] = color[2] / 255;
-// }
-
-// sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-// sphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-// const position = sphere.getAttribute('position');
-// const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-// const mesh = new THREE.Mesh(sphere, material);
-
-// const particlesMaterial = new THREE.PointsMaterial({ size: 0.02, vertexColors: true });
-// const particles = new THREE.Points(sphere, particlesMaterial);
-
+const detail = 10;
 const radius = 5;
-const icosphere = new THREE.IcosahedronGeometry(radius, 0);
+const icosphere = new THREE.IcosahedronGeometry(radius, detail);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
 const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
+const posAttribute = icosphere.getAttribute('position');
+
+const vertexNum = icosphere.getAttribute('normal').count / 6 + 2;
+let map = new Map();
+let indices = [new Float32Array(vertexNum * 3)];
+let vertices = new Float32Array(vertexNum * 3);
+for (let i = 0; i < posAttribute.array.length; i += 3) {
+  const position = [posAttribute.array[i], posAttribute.array[i + 1], posAttribute.array[i + 2]];
+  let index = map.get(JSON.stringify(position));
+  if (index === undefined) {
+    index = map.size;
+    map.set(JSON.stringify(position), index);
+    vertices.set(position, index * 3);
+  }
+  indices[i / 3] = index;
+}
+
+icosphere.setIndex(indices);
+icosphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
 const position = icosphere.getAttribute('position');
 
-const colorArray = new Float32Array(position.count * 3);
+const colorArray = new Float32Array(posAttribute.count * 3);
 for (let i = 0; i < colorArray.length; i += 3) {
-  const color = hslToRgb(((position.array[i] + radius) * 0.15) / (2 * radius) + 0.5, 0.5, 0.5);
+  const color = hslToRgb(((posAttribute.array[i] + radius) * 0.15) / (2 * radius) + 0.5, 0.5, 0.5);
   colorArray[i] = color[0] / 255;
   colorArray[i + 1] = color[1] / 255;
   colorArray[i + 2] = color[2] / 255;
@@ -56,53 +47,9 @@ const pointsMaterial = new THREE.PointsMaterial({ size: 0.05, vertexColors: true
 const points = new THREE.Points(icosphere, pointsMaterial);
 
 // scene.add(points);
-// scene.add(icoMesh);
+scene.add(icoMesh);
 
-const indexed = new THREE.BufferGeometry();
-const geometry = new THREE.BoxGeometry(2, 2, 2);
-
-const vertices = new Float32Array([
-  -1.0,
-  -1.0,
-  1.0, // v0
-  1.0,
-  -1.0,
-  1.0, // v1
-  1.0,
-  1.0,
-  1.0, // v2
-  -1.0,
-  1.0,
-  1.0, // v3
-  -1.0,
-  -1.0,
-  -1.0, // v4
-  1.0,
-  -1.0,
-  -1.0, // v5
-  1.0,
-  1.0,
-  -1.0, // v6
-  -1.0,
-  1.0,
-  -1.0, // v7
-]);
-
-const indices = [0, 1, 2, 0, 2, 3, 6, 5, 4, 7, 6, 4, 0, 3, 4, 3, 7, 4, 1, 5, 2, 2, 5, 6];
-
-indexed.setIndex(indices);
-indexed.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-const indexedMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: false });
-const indexedMesh = new THREE.Mesh(indexed, indexedMaterial);
-
-const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: false });
-const mesh = new THREE.Mesh(geometry, material);
-
-// scene.add(indexedMesh);
-scene.add(mesh);
-
-camera.position.z = 10;
+camera.position.z = 15;
 
 function fibonacciSphere(numPoints, point) {
   const rnd = 1;
@@ -157,28 +104,22 @@ function movePoint(i, dist, vertices) {
 }
 
 // for (let i = 0; i < 1 * 6; i++) {
-//   movePoint(i, 1, position.array);
+//   movePoint(i, 1, posAttribute.array);
 // }
 // icosphere.verticesNeedUpdate = true;
 
-movePoint(2, 1, indexed.getAttribute('position').array);
-movePoint(3, 1, indexed.getAttribute('position').array);
-
-movePoint(16, 1, geometry.getAttribute('position').array);
-movePoint(17, 1, geometry.getAttribute('position').array);
-
 function animate() {
-  // icoMesh.rotation.x += 0.005;
-  icoMesh.rotation.y += 0.005;
-  icoMesh.rotation.z += 0.005;
+  // icoMesh.rotation.y -= 0.005;
+  // icoMesh.rotation.z -= 0.005;
+  icoMesh.rotation.x += 0.005;
 
-  mesh.rotation.y -= 0.005;
+  //   posAttribute.setXYZ(index + 1, x, y, z);
+  //   posAttribute.setXYZ(index + 2, x, y, z);
 
-  indexedMesh.rotation.y -= 0.005;
-  // indexedMesh.rotation.z += 0.005;
-
-  //   positionAttribute.setXYZ(index + 1, x, y, z);
-  //   positionAttribute.setXYZ(index + 2, x, y, z);
+  for (let i = 0; i < position.count; i++) {
+    movePoint(i, Math.random() / 100, position.array);
+  }
+  position.needsUpdate = true;
 
   requestAnimationFrame(animate);
 
