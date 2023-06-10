@@ -7,11 +7,44 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth - 20, window.innerHeight - 20);
 document.body.appendChild(renderer.domElement);
 
+let analyser, dataArray;
+const audioElement = document.getElementById('audio');
+
+let micAudio = true;
+function webAudio(stream) {
+  if (analyser) return;
+  if (!micAudio) audioElement.play();
+  console.log('now playing');
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  let source = micAudio ? audioCtx.createMediaStreamSource(stream) : audioCtx.createMediaElementSource(audioElement);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  source.connect(analyser);
+
+  animate();
+}
+
+if (micAudio) {
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then((stream) => {
+    webAudio(stream);
+  });
+} else {
+  document.addEventListener('click', () => {
+    webAudio();
+  });
+}
+
+const maxHeight = 5;
 const frequency = 0.08;
-const detail = 0;
+const detail = 11;
 const radius = 5;
-const colorMax = 0.8;
-const colorMin = 0.5;
+const colorMax = 0.65;
+const colorMin = 0.4;
 const icosphere = new THREE.IcosahedronGeometry(radius, detail);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
 const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
@@ -32,9 +65,9 @@ for (let i = 0; i < posAttribute.array.length; i += 3) {
   indices[i / 3] = index;
 }
 
-for (let i = 0; i < vertexNum; i++) {
-  movePoint(i, Math.random() * 2 * Math.sin(frequency), vertices);
-}
+// for (let i = 0; i < vertexNum; i++) {
+//   movePoint(i, Math.random() * 2 * Math.sin(frequency), vertices);
+// }
 
 icosphere.setIndex(indices);
 icosphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
@@ -43,7 +76,7 @@ posAttribute = icosphere.getAttribute('position');
 
 let hueArray = [];
 for (let i = 0; i < vertexNum * 3; i += 3) {
-  const hue = ((posAttribute.array[i] + radius) * colorMax) / (2 * radius) + colorMin;
+  const hue = (posAttribute.array[i] + radius) / (2 * radius);
   hueArray.push(hue);
 }
 
@@ -52,10 +85,6 @@ const colorAttribute = icosphere.getAttribute('color');
 
 setColors();
 
-const pointsMaterial = new THREE.PointsMaterial({ size: 0.05, vertexColors: true });
-const points = new THREE.Points(icosphere, pointsMaterial);
-
-// scene.add(points);
 scene.add(icoMesh);
 
 camera.position.z = 15;
@@ -103,9 +132,11 @@ function hslToRgb(h, s, l) {
 
 function movePoint(i, dist, vertices) {
   const index = i * 3;
+  const currentDist = new THREE.Vector3(vertices[index], vertices[index + 1], vertices[index + 2]).distanceTo(new THREE.Vector3());
+  const moveDist = dist + radius - currentDist;
   const point = new THREE.Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
   const direction = point.clone().normalize();
-  const newPoint = point.clone().addScaledVector(direction, dist);
+  const newPoint = point.clone().addScaledVector(direction, moveDist);
 
   vertices[index] = newPoint.x;
   vertices[index + 1] = newPoint.y;
@@ -114,13 +145,30 @@ function movePoint(i, dist, vertices) {
 
 function setColors() {
   for (let i = 0; i < vertexNum; i++) {
-    const P = 0;
-    const hue = ((colorMin - colorMax) / P) * (P - Math.abs());
-    // y=\frac{H-L}{P}\left(P-\left|\operatorname{mod}\left(x,2P\right)-P\right|\right)+L
-    const color = hslToRgb(hueArray[i], 0.5, 0.5);
+    const hue = (colorMax - colorMin) * (1 - Math.abs((hueArray[i] % 2) - 1)) + colorMin;
+    const color = hslToRgb(hue, 0.5, 0.5);
     colorAttribute.array.set(color, i * 3);
   }
   colorAttribute.needsUpdate = true;
+}
+
+function smoothData(windowSize) {
+  const smoothedData = [];
+
+  for (let i = 0; i < dataArray.length; i++) {
+    const windowStart = Math.max(0, i - Math.floor(windowSize / 2));
+    const windowEnd = Math.min(dataArray.length - 1, i + Math.ceil(windowSize / 2));
+    let sum = 0;
+
+    for (let j = windowStart; j <= windowEnd; j++) {
+      sum += dataArray[j];
+    }
+
+    const average = sum / (windowEnd - windowStart + 1);
+    smoothedData.push(average);
+  }
+
+  return smoothedData;
 }
 
 // for (let i = 0; i < 1 * 6; i++) {
@@ -131,26 +179,31 @@ function setColors() {
 let frameCount = 1;
 function animate() {
   frameCount++;
+
+  analyser.getByteFrequencyData(dataArray);
+  const smoothedData = smoothData(0);
+  // console.log(smoothedData);
+
   icoMesh.rotation.y -= 0.005;
   icoMesh.rotation.z -= 0.005;
-  //icoMesh.rotation.x += 0.005;
 
-  //   posAttribute.setXYZ(index + 1, x, y, z);
-  //   posAttribute.setXYZ(index + 2, x, y, z);
-
-  for (let i = 0; i < vertexNum; i++) {
-    const dist =
-      new THREE.Vector3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]).distanceTo(new THREE.Vector3()) -
-      radius;
-    const amplitude = dist / Math.sin(frequency * frameCount);
-    const good = Math.abs(amplitude * Math.sin(frequency * (frameCount + 1)));
-    movePoint(i, good - dist, posAttribute.array);
+  // for (let i = 0; i < vertexNum; i++) {
+  //   const dist = new THREE.Vector3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]).distanceTo(new THREE.Vector3()) - radius;
+  //   const amplitude = dist / Math.sin(frequency * frameCount);
+  //   const newDist = Math.abs(amplitude * Math.sin(frequency * (frameCount + 1)));
+  //   movePoint(i, newDist, posAttribute.array);
+  // }
+  for (let i = 0; i < smoothedData.length; i++) {
+    movePoint(i, (smoothedData[i] / 255) * maxHeight, posAttribute.array);
   }
   posAttribute.needsUpdate = true;
+
+  for (let i = 0; i < hueArray.length; i++) {
+    hueArray[i] += 0.001;
+  }
+  setColors();
 
   requestAnimationFrame(animate);
 
   renderer.render(scene, camera);
 }
-
-animate();

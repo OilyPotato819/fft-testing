@@ -8,6 +8,7 @@ let analyser, bufferLength, dataArray;
 const audioElement = document.getElementById('audio');
 
 document.addEventListener('click', () => {
+  if (analyser) return;
   audioElement.play();
   console.log('now playing');
 
