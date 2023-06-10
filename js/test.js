@@ -10,7 +10,7 @@ document.body.appendChild(renderer.domElement);
 let analyser, dataArray;
 const audioElement = document.getElementById('audio');
 
-let micAudio = true;
+let micAudio = false;
 function webAudio(stream) {
   if (analyser) return;
   if (!micAudio) audioElement.play();
@@ -39,44 +39,32 @@ if (micAudio) {
   });
 }
 
-const maxHeight = 5;
+// const coefficient = 1.3;
+const width = 5;
+const height = 5;
+
+const maxHeight = 3;
 const frequency = 0.08;
 const detail = 11;
 const radius = 5;
-const colorMax = 0.65;
-const colorMin = 0.4;
-const icosphere = new THREE.IcosahedronGeometry(radius, detail);
+const colorMax = 1;
+const colorMin = 0;
+const icosphere = new THREE.SphereGeometry(radius, width, height);
+// const icosphere = new THREE.SphereGeometry(radius, Math.floor(32 * coefficient), Math.floor(16 * coefficient));
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
 const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
+// indexGeometry(icosphere);
 let posAttribute = icosphere.getAttribute('position');
-
-const vertexNum = icosphere.getAttribute('normal').count / 6 + 2;
-let map = new Map();
-let indices = [new Float32Array(vertexNum * 3)];
-let vertices = new Float32Array(vertexNum * 3);
-for (let i = 0; i < posAttribute.array.length; i += 3) {
-  const position = [posAttribute.array[i], posAttribute.array[i + 1], posAttribute.array[i + 2]];
-  let index = map.get(JSON.stringify(position));
-  if (index === undefined) {
-    index = map.size;
-    map.set(JSON.stringify(position), index);
-    vertices.set(position, index * 3);
-  }
-  indices[i / 3] = index;
-}
 
 // for (let i = 0; i < vertexNum; i++) {
 //   movePoint(i, Math.random() * 2 * Math.sin(frequency), vertices);
 // }
 
-icosphere.setIndex(indices);
-icosphere.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-posAttribute = icosphere.getAttribute('position');
+// posAttribute = icosphere.getAttribute('position');
 
 let hueArray = [];
-for (let i = 0; i < vertexNum * 3; i += 3) {
-  const hue = (posAttribute.array[i] + radius) / (2 * radius);
+for (let i = 0; i < posAttribute.count; i++) {
+  const hue = i / posAttribute.count;
   hueArray.push(hue);
 }
 
@@ -103,6 +91,30 @@ function fibonacciSphere(numPoints, point) {
   const z = Math.sin(phi) * r;
 
   return { x: x, y: y, z: z, phi: phi };
+}
+
+function indexGeometry(geometry) {
+  const vertexNum = width * height + height + 1;
+  const pos = geometry.getAttribute('position');
+  let map = new Map();
+  let indices = [];
+  let vertices = new Float32Array(vertexNum * 3);
+
+  for (let i = 0; i < pos.array.length; i += 3) {
+    const position = [pos.array[i], pos.array[i + 1], pos.array[i + 2]];
+    const key = `${position[0]},${position[1]},${position[2]}`;
+    let index = map.get(key);
+
+    if (index === undefined) {
+      index = map.size;
+      map.set(key, index);
+      vertices.set(position, index * 3);
+    }
+    indices.push(index);
+  }
+
+  geometry.setIndex(indices);
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 }
 
 function hslToRgb(h, s, l) {
@@ -144,7 +156,7 @@ function movePoint(i, dist, vertices) {
 }
 
 function setColors() {
-  for (let i = 0; i < vertexNum; i++) {
+  for (let i = 0; i < posAttribute.count; i++) {
     const hue = (colorMax - colorMin) * (1 - Math.abs((hueArray[i] % 2) - 1)) + colorMin;
     const color = hslToRgb(hue, 0.5, 0.5);
     colorAttribute.array.set(color, i * 3);
@@ -182,10 +194,9 @@ function animate() {
 
   analyser.getByteFrequencyData(dataArray);
   const smoothedData = smoothData(0);
-  // console.log(smoothedData);
 
   icoMesh.rotation.y -= 0.005;
-  icoMesh.rotation.z -= 0.005;
+  // icoMesh.rotation.z -= 0.005;
 
   // for (let i = 0; i < vertexNum; i++) {
   //   const dist = new THREE.Vector3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]).distanceTo(new THREE.Vector3()) - radius;
@@ -198,10 +209,10 @@ function animate() {
   }
   posAttribute.needsUpdate = true;
 
-  for (let i = 0; i < hueArray.length; i++) {
-    hueArray[i] += 0.001;
-  }
-  setColors();
+  // for (let i = 0; i < hueArray.length; i++) {
+  //   hueArray[i] += 0.001;
+  // }
+  // setColors();
 
   requestAnimationFrame(animate);
 
