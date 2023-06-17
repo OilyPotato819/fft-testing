@@ -40,8 +40,8 @@ if (micAudio) {
 }
 
 // const coefficient = 1.3;
-const width = 5;
-const height = 5;
+const width = 32;
+const height = 16;
 
 const maxHeight = 3;
 const frequency = 0.08;
@@ -49,18 +49,24 @@ const detail = 11;
 const radius = 5;
 const colorMax = 1;
 const colorMin = 0;
-const icosphere = new THREE.SphereGeometry(radius, width, height);
-// const icosphere = new THREE.SphereGeometry(radius, Math.floor(32 * coefficient), Math.floor(16 * coefficient));
+const orb = new THREE.SphereGeometry(radius, width, height);
 const icoMaterial = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true });
-const icoMesh = new THREE.Mesh(icosphere, icoMaterial);
-// indexGeometry(icosphere);
-let posAttribute = icosphere.getAttribute('position');
+const icoMesh = new THREE.Mesh(orb, icoMaterial);
+let posAttribute = orb.getAttribute('position');
+// getVertexNum is bad
+const vertexNum = getVertexNum();
+
+deIndexGeometry(orb);
+indexGeometry(orb);
 
 // for (let i = 0; i < vertexNum; i++) {
 //   movePoint(i, Math.random() * 2 * Math.sin(frequency), vertices);
 // }
 
-// posAttribute = icosphere.getAttribute('position');
+// posAttribute = orb.getAttribute('position');
+
+movePoint(vertexNum - 2, 5, posAttribute.array);
+console.log(posAttribute.array);
 
 let hueArray = [];
 for (let i = 0; i < posAttribute.count; i++) {
@@ -68,8 +74,8 @@ for (let i = 0; i < posAttribute.count; i++) {
   hueArray.push(hue);
 }
 
-icosphere.setAttribute('color', new THREE.BufferAttribute(new Float32Array(posAttribute.count * 3), 3));
-const colorAttribute = icosphere.getAttribute('color');
+orb.setAttribute('color', new THREE.BufferAttribute(new Float32Array(posAttribute.count * 3), 3));
+const colorAttribute = orb.getAttribute('color');
 
 setColors();
 
@@ -93,15 +99,38 @@ function fibonacciSphere(numPoints, point) {
   return { x: x, y: y, z: z, phi: phi };
 }
 
+function getVertexNum() {
+  let vertices = [];
+  for (let i = 0; i < posAttribute.count * 3; i += 3) {
+    vertices.push(`${posAttribute.array[i]},${posAttribute.array[i + 1]},${posAttribute.array[i + 2]}`);
+  }
+  return new Set(vertices).size;
+}
+
+function deIndexGeometry(geometry) {
+  const index = geometry.index;
+  let vertices = new Float32Array(index.count * 3);
+
+  for (let i = 0; i < index.count; i++) {
+    const vertexI = index.array[i] * 3;
+    for (let j = 0; j < 3; j++) {
+      const value = posAttribute.array[vertexI + j];
+      vertices[i * 3 + j] = value > 1e-10 || value < -1e-10 ? value : 0;
+    }
+  }
+
+  geometry.setIndex(null);
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  posAttribute = orb.getAttribute('position');
+}
+
 function indexGeometry(geometry) {
-  const vertexNum = width * height + height + 1;
-  const pos = geometry.getAttribute('position');
   let map = new Map();
   let indices = [];
   let vertices = new Float32Array(vertexNum * 3);
 
-  for (let i = 0; i < pos.array.length; i += 3) {
-    const position = [pos.array[i], pos.array[i + 1], pos.array[i + 2]];
+  for (let i = 0; i < posAttribute.array.length; i += 3) {
+    const position = [posAttribute.array[i], posAttribute.array[i + 1], posAttribute.array[i + 2]];
     const key = `${position[0]},${position[1]},${position[2]}`;
     let index = map.get(key);
 
@@ -115,6 +144,7 @@ function indexGeometry(geometry) {
 
   geometry.setIndex(indices);
   geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  posAttribute = orb.getAttribute('position');
 }
 
 function hslToRgb(h, s, l) {
@@ -186,7 +216,9 @@ function smoothData(windowSize) {
 // for (let i = 0; i < 1 * 6; i++) {
 //   movePoint(i, 1, posAttribute.array);
 // }
-// icosphere.verticesNeedUpdate = true;
+// orb.verticesNeedUpdate = true;
+
+icoMesh.rotation.x -= 0.5;
 
 let frameCount = 1;
 function animate() {
@@ -198,16 +230,10 @@ function animate() {
   icoMesh.rotation.y -= 0.005;
   // icoMesh.rotation.z -= 0.005;
 
-  // for (let i = 0; i < vertexNum; i++) {
-  //   const dist = new THREE.Vector3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]).distanceTo(new THREE.Vector3()) - radius;
-  //   const amplitude = dist / Math.sin(frequency * frameCount);
-  //   const newDist = Math.abs(amplitude * Math.sin(frequency * (frameCount + 1)));
-  //   movePoint(i, newDist, posAttribute.array);
+  // for (let i = 0; i < smoothedData.length; i++) {
+  //   movePoint(i, (smoothedData[i] / 255) * maxHeight, posAttribute.array);
   // }
-  for (let i = 0; i < smoothedData.length; i++) {
-    movePoint(i, (smoothedData[i] / 255) * maxHeight, posAttribute.array);
-  }
-  posAttribute.needsUpdate = true;
+  // posAttribute.needsUpdate = true;
 
   // for (let i = 0; i < hueArray.length; i++) {
   //   hueArray[i] += 0.001;
